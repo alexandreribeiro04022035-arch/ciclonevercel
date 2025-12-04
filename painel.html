@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Painel Admin - Empresas</title>
+<style>
+    body { font-family: Arial; background: #f5f5f5; padding: 20px; }
+    h2 { margin-top: 30px; }
+    .box {
+        background: #fff;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 10px #0002;
+        margin-bottom: 25px;
+    }
+    input, textarea, select {
+        width: 100%;
+        padding: 10px;
+        margin: 5px 0 15px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    table th, table td {
+        border: 1px solid #ddd;
+        padding: 10px;
+        font-size: 14px;
+    }
+    table th {
+        background: #0d6efd;
+        color: #fff;
+    }
+    button {
+        padding: 10px 14px;
+        border: 0;
+        border-radius: 6px;
+        color: white;
+        cursor: pointer;
+    }
+    .add-btn { background: #28a745; }
+    .edit-btn { background: #ffc107; }
+    .delete-btn { background: #dc3545; }
+    .save-btn { background: #0d6efd; width: 100%; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<h1>Painel Administrativo - Empresas</h1>
+
+<!-- ======================== CADASTRAR NOVA EMPRESA ======================== -->
+<div class="box">
+    <h2>Cadastrar Nova Empresa</h2>
+
+    <input id="empresa" placeholder="Empresa">
+    <input id="email" placeholder="Email">
+    <input id="cnpj" placeholder="CNPJ">
+    <input id="telefone" placeholder="Telefone">
+    <input id="gerente" placeholder="Gerente">
+    <input id="anuncio" placeholder="Anúncio">
+    <input id="produto" placeholder="Produto">
+    <input id="tarefa" placeholder="Tarefa">
+    <input id="avatar" placeholder="Avatar (URL)">
+    <input id="pagamento" placeholder="Pagamento">
+    <input id="notafiscal" placeholder="Nota Fiscal">
+    <input id="mensagem" placeholder="Mensagem">
+    <textarea id="historico" placeholder="Histórico"></textarea>
+    <input id="status" placeholder="Status">
+    <input id="tipo" placeholder="Tipo">
+    <input id="servico" placeholder="Serviço">
+    <input id="preco" placeholder="Preço">
+    <input id="tarifa" placeholder="Tarifa">
+
+    <button class="add-btn" onclick="salvarEmpresa()">Cadastrar Empresa</button>
+    <p id="retorno" style="font-weight: bold;"></p>
+</div>
+
+<!-- ======================== LISTAR EMPRESAS ======================== -->
+<div class="box">
+    <h2>Lista de Empresas</h2>
+    <button onclick="carregarEmpresas()" style="margin-bottom:10px;">🔄 Atualizar</button>
+
+    <table id="tabela">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Empresa</th>
+                <th>Gerente</th>
+                <th>Telefone</th>
+                <th>Serviço</th>
+                <th>Preço</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<!-- ======================== MODAL DE EDIÇÃO ======================== -->
+<div id="modal" style="
+    display:none; 
+    position:fixed; 
+    top:0; left:0; right:0; bottom:0; 
+    background:#0009; 
+    padding:40px;">
+    
+    <div class="box" style="max-width:600px; margin:auto;">
+        <h2>Editar Empresa</h2>
+
+        <input id="edit_id" disabled>
+
+        <input id="edit_empresa" placeholder="Empresa">
+        <input id="edit_email" placeholder="Email">
+        <input id="edit_cnpj" placeholder="CNPJ">
+        <input id="edit_telefone" placeholder="Telefone">
+        <input id="edit_gerente" placeholder="Gerente">
+        <input id="edit_anuncio" placeholder="Anúncio">
+        <input id="edit_produto" placeholder="Produto">
+        <input id="edit_tarefa" placeholder="Tarefa">
+        <input id="edit_avatar" placeholder="Avatar">
+        <input id="edit_pagamento" placeholder="Pagamento">
+        <input id="edit_notafiscal" placeholder="Nota Fiscal">
+        <input id="edit_mensagem" placeholder="Mensagem">
+        <textarea id="edit_historico" placeholder="Histórico"></textarea>
+        <input id="edit_status" placeholder="Status">
+        <input id="edit_tipo" placeholder="Tipo">
+        <input id="edit_servico" placeholder="Serviço">
+        <input id="edit_preco" placeholder="Preço">
+        <input id="edit_tarifa" placeholder="Tarifa">
+
+        <button class="save-btn" onclick="salvarEdicao()">Salvar Alterações</button>
+        <button class="delete-btn" onclick="fecharModal()" style="margin-top:10px; width:100%;">Cancelar</button>
+
+        <p id="retornoEdit" style="font-weight:bold;"></p>
+    </div>
+</div>
+
+<script>
+/* ======================== CONFIG SUPABASE ======================== */
+const SUPABASE_URL = "https://amkusmkfnznxnthivkzy.supabase.co";
+const SUPABASE_KEY =
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFta3VzbWtmbnpueG50aGl2a3p5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ0Njk5MzYsImV4cCI6MjA4MDA0NTkzNn0.2mP7vVUHg2aa2vOEUkC4UjAFfXZyArav1pzFzMR9s7E";
+
+/* ======================== UTIL ======================== */
+function get(id) { const v=document.getElementById(id).value; return v===""?null:v; }
+
+/* ======================== CADASTRAR EMPRESA ======================== */
+async function salvarEmpresa() {
+    const dados = {
+        empresa:get("empresa"), email:get("email"), cnpj:get("cnpj"), telefone:get("telefone"),
+        gerente:get("gerente"), anuncio:get("anuncio"), produto:get("produto"), tarefa:get("tarefa"),
+        avatar:get("avatar"), pagamento:get("pagamento"), notafiscal:get("notafiscal"),
+        mensagem:get("mensagem"), historico:get("historico"), status:get("status"),
+        tipo:get("tipo"), servico:get("servico"), preco:get("preco"), tarifa:get("tarifa")
+    };
+
+    const req = await fetch(`${SUPABASE_URL}/rest/v1/empresas`, {
+        method:"POST",
+        headers:{
+            "Content-Type":"application/json",
+            "apikey":SUPABASE_KEY,
+            "Authorization":"Bearer "+SUPABASE_KEY,
+            "Prefer":"return=representation"
+        },
+        body:JSON.stringify(dados)
+    });
+
+    if(req.ok){ document.getElementById("retorno").textContent="✔ Empresa cadastrada"; carregarEmpresas(); }
+    else document.getElementById("retorno").textContent="❌ Erro ao cadastrar";
+}
+
+/* ======================== LISTAR EMPRESAS ======================== */
+async function carregarEmpresas(){
+    const tabela = document.querySelector("#tabela tbody");
+    tabela.innerHTML = "<tr><td colspan='6'>Carregando...</td></tr>";
+
+    const req = await fetch(`${SUPABASE_URL}/rest/v1/empresas?select=*`, {
+        headers:{ apikey:SUPABASE_KEY, Authorization:"Bearer "+SUPABASE_KEY }
+    });
+
+    const dados = await req.json();
+    tabela.innerHTML = "";
+
+    dados.forEach(emp => {
+        tabela.innerHTML += `
+        <tr>
+            <td>${emp.id}</td>
+            <td>${emp.empresa || ""}</td>
+            <td>${emp.gerente || ""}</td>
+            <td>${emp.telefone || ""}</td>
+            <td>${emp.servico || ""}</td>
+            <td>${emp.preco || ""}</td>
+            <td>
+                <button class="edit-btn" onclick='abrirEdicao(${JSON.stringify(emp)})'>Editar</button>
+                <button class="delete-btn" onclick='deletar(${emp.id})'>Excluir</button>
+            </td>
+        </tr>`;
+    });
+}
+
+/* ======================== ABRIR MODAL DE EDIÇÃO ======================== */
+function abrirEdicao(emp){
+    for(let chave in emp){
+        if(document.getElementById("edit_"+chave) !== null){
+            document.getElementById("edit_"+chave).value = emp[chave] ?? "";
+        }
+    }
+    document.getElementById("modal").style.display = "block";
+}
+function fecharModal(){ document.getElementById("modal").style.display="none"; }
+
+/* ======================== SALVAR EDIÇÃO ======================== */
+async function salvarEdicao(){
+    const id = document.getElementById("edit_id").value;
+
+    const dados = {};
+    document.querySelectorAll("[id^='edit_']").forEach(campo=>{
+        const k = campo.id.replace("edit_","");
+        if(k!=="id") dados[k] = campo.value===""?null:campo.value;
+    });
+
+    const req = await fetch(`${SUPABASE_URL}/rest/v1/empresas?id=eq.${id}`, {
+        method:"PATCH",
+        headers:{
+            "Content-Type":"application/json",
+            "apikey":SUPABASE_KEY,
+            "Authorization":"Bearer "+SUPABASE_KEY
+        },
+        body:JSON.stringify(dados)
+    });
+
+    if(req.ok){
+        document.getElementById("retornoEdit").textContent="✔ Alterações salvas";
+        carregarEmpresas();
+    } else {
+        document.getElementById("retornoEdit").textContent="❌ Erro ao salvar";
+    }
+}
+
+/* ======================== EXCLUIR EMPRESA ======================== */
+async function deletar(id){
+    if(!confirm("Apagar esta empresa?")) return;
+
+    await fetch(`${SUPABASE_URL}/rest/v1/empresas?id=eq.${id}`, {
+        method:"DELETE",
+        headers:{ apikey:SUPABASE_KEY, Authorization:"Bearer "+SUPABASE_KEY }
+    });
+
+    carregarEmpresas();
+}
+
+/* ======================== AUTO LOAD ======================== */
+carregarEmpresas();
+</script>
+
+</body>
+</html>
